@@ -1,0 +1,159 @@
+name: Release SDK
+
+# A push to main that changes sdk/pyproject.toml releases the version written
+# there, unless the tag `v<version>` already exists: it builds, verifies,
+# publishes fastrag-ai to PyPI, then creates that tag and a GitHub release. So
+# merging a `task bump` releases, while any other pyproject.toml edit only
+# re-verifies the build. Running the workflow by hand only builds and
+# verifies, as a dry run.
+on:
+  push:
+    branches: [ main ]
+    paths:
+    - sdk/pyproject.toml
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: sdk-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: sdk
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      release: ${{ steps.version.outputs.release }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+        # Every tag, to tell whether this version was released already.
+        fetch-depth: 0
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      with:
+        # No cache on a release path, so nothing a branch wrote can reach it.
+        enable-cache: false
+
+    - name: Read version
+      id: version
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+      run: |
+        version="$(uv version --short)"
+        tag="v$version"
+        release=false
+        if git rev-parse --quiet --verify "refs/tags/$tag" > /dev/null; then
+          # The retired CLI's v0.1.1-v0.1.8 tags share the format, so an existing
+          # tag only means "released" when it holds this same SDK version.
+          tagged="$(git show "$tag:sdk/pyproject.toml" 2> /dev/null \
+            | python3 -c 'import sys, tomllib; print(tomllib.load(sys.stdin.buffer)["project"]["version"])' 2> /dev/null || true)"
+          if [ "$tagged" != "$version" ]; then
+            echo "::error::Tag $tag already exists and is not a fastrag-ai $version release. Bump to a version whose tag is free (task bump -- <version>)."
+            exit 1
+          fi
+          echo "::notice::$tag is already released; this run only verifies the build."
+        elif [ "$EVENT_NAME" = "push" ]; then
+          release=true
+        fi
+        {
+          echo "version=$version"
+          echo "tag=$tag"
+          echo "release=$release"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Lint
+      run: |
+        uv run --locked --only-group dev ruff check src scripts
+        uv run --locked --only-group dev ruff format --check src scripts
+
+    - name: Build
+      run: uv build --no-sources --clear
+
+    - name: Check metadata
+      run: uvx twine==7.0.0 check --strict dist/*
+
+    - name: Smoke test (wheel)
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: uv run --isolated --no-project --with dist/*.whl python -I scripts/smoke_test.py "$VERSION"
+
+    - name: Smoke test (sdist)
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: uv run --isolated --no-project --with dist/*.tar.gz python -I scripts/smoke_test.py "$VERSION"
+
+    - name: Upload distributions
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: dist
+        path: sdk/dist/
+        if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    if: needs.build.outputs.release == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/fastrag-ai/${{ needs.build.outputs.version }}/
+    permissions:
+      # Trusted Publishing: PyPI exchanges this OIDC token for a short-lived
+      # upload token, so no PyPI secret is stored in the repository.
+      id-token: write
+    steps:
+    - name: Download distributions
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: dist
+        path: dist/
+
+    - name: Publish
+      uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+      with:
+        # A version already uploaded (by hand, see README, or by a run whose
+        # release step failed) is skipped rather than failing the run, so the
+        # tag and the GitHub release still get created.
+        skip-existing: true
+
+  github-release:
+    name: Tag and create GitHub release
+    needs: [ build, publish ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Download distributions
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: dist
+        path: dist/
+
+    - name: Create release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: ${{ needs.build.outputs.tag }}
+        VERSION: ${{ needs.build.outputs.version }}
+      run: |
+        prerelease=""
+        case "$VERSION" in *a* | *b* | *rc* | *dev*) prerelease="--prerelease" ;; esac
+        # The tag does not exist yet: --target creates it on the commit this
+        # run built and published.
+        gh release create "$TAG" dist/* \
+          --repo "$GITHUB_REPOSITORY" \
+          --target "$GITHUB_SHA" \
+          --title "fastrag-ai $VERSION" \
+          --notes "Published to PyPI as [fastrag-ai $VERSION](https://pypi.org/project/fastrag-ai/$VERSION/). See the [changelog](https://github.com/$GITHUB_REPOSITORY/blob/$TAG/sdk/CHANGELOG.md) for what changed." \
+          $prerelease
