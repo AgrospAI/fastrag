@@ -1,0 +1,63 @@
+{
+  "samples": [
+    {
+      "question": "How do you request to join the AgrospAI data space by email?",
+      "expected_answers": [
+        "Send the required information by email to agrospai@udl.cat with the subject 'Adhesion to ED – [Company Name]', and the promoter will process your request."
+      ],
+      "relevant_ids": ["https://agrospai.udl.cat/en/docs/guides/incorporation/"]
+    },
+    {
+      "question": "How do you publish a dataset in AgrospAI?",
+      "expected_answers": [
+        "Follow the AgrospAI guide on how to publish data and algorithms in the data space."
+      ],
+      "relevant_ids": ["https://agrospai.udl.cat/en/docs/guides/publish/"]
+    },
+    {
+      "question": "How do you edit or revoke consent for shared data in AgrospAI?",
+      "expected_answers": [
+        "Access your profile on the AgrospAI portal to edit an asset's access and usage policies, choosing which users and algorithms can use it, or to revoke consent."
+      ],
+      "relevant_ids": ["https://agrospai.udl.cat/en/docs/guides/edit-revoke/"]
+    },
+    {
+      "question": "What financial aid does the AgrospAI Data Spaces Kit provide to participants?",
+      "expected_answers": [
+        "Financial aid of up to €30,000 per entity (€50,000 for public administrations) that facilitates the integration process of participants into a data space, covering part of the associated expenses."
+      ],
+      "relevant_ids": [
+        "https://agrospai.udl.cat/en/kit/introduction/",
+        "https://agrospai.udl.cat/en/blog/kit/"
+      ]
+    },
+    {
+      "question": "How do you build a Compute-to-Data algorithm in AgrospAI?",
+      "expected_answers": [
+        "Build and test the algorithm locally using the reference code, then continue with the guide on publishing a Compute-to-Data algorithm to bring it to the portal."
+      ],
+      "relevant_ids": ["https://agrospai.udl.cat/en/docs/guides/algorithms/build/"]
+    },
+    {
+      "question": "What legal terms and conditions govern the use of the AgrospAI portal?",
+      "expected_answers": [
+        "The AgrospAI Terms and Conditions govern use of the Service, covering acknowledgement, termination, limitation of liability, and translation interpretation, among other clauses."
+      ],
+      "relevant_ids": ["https://agrospai.udl.cat/en/legal/terms/"]
+    },
+    {
+      "question": "What is the privacy policy of AgrospAI?",
+      "expected_answers": [
+        "AgrospAI's Privacy Policy describes how personal data is collected, used, and disclosed, and is periodically updated, with changes posted on the page."
+      ],
+      "relevant_ids": ["https://agrospai.udl.cat/en/legal/privacy/"]
+    },
+    {
+      "question": "How is on-chain consent used in AgrospAI shared governance?",
+      "expected_answers": [
+        "On-chain consent addresses why a cooperative governance model is needed, moving from data silos toward data cooperatives."
+      ],
+      "relevant_ids": ["https://agrospai.udl.cat/en/docs/governance/shared-governance/"]
+    }
+  ]
+}

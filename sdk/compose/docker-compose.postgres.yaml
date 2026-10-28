@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:18.4
+    container_name: fastrag-postgres
+    labels:
+      traefik.enable: 'true'
+      traefik.tcp.routers.postgres.rule: HostSNI(`*`)
+      traefik.tcp.routers.postgres.entrypoints: postgres
+      traefik.tcp.routers.postgres.service: postgres
+      traefik.tcp.services.postgres.loadbalancer.server.port: '5432'
+    volumes:
+    - fastrag-postgres-data:/var/lib/postgresql
+    networks:
+    - fastrag
+    restart: unless-stopped
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    env_file:
+    - ../.env
+  pgadmin:
+    profiles:
+    - pgadmin
+    image: dpage/pgadmin4:9.17
+    container_name: fastrag-pgadmin
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.pgadmin.rule: Host(`${PGADMIN_HOST:-pgadmin.localhost}`)
+      traefik.http.routers.pgadmin.entrypoints: web
+      traefik.http.routers.pgadmin.service: pgadmin
+      traefik.http.services.pgadmin.loadbalancer.server.port: '80'
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-postgres}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      # Desktop mode must auto-login as the account created by the container.
+      PGADMIN_CONFIG_DESKTOP_USER: "'${PGADMIN_DEFAULT_EMAIL:-admin@example.com}'"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: 'True'
+    entrypoint:
+    - /bin/sh
+    - -ec
+    - |
+      cp /tmp/pgpass /var/lib/pgadmin/pgpass
+      chmod 600 /var/lib/pgadmin/pgpass
+      exec /entrypoint.sh
+    volumes:
+    - fastrag-pgadmin-data:/var/lib/pgadmin
+    - ./pgpass:/tmp/pgpass:ro
+    - ./servers.json:/pgadmin4/servers.json:ro
+    networks:
+    - fastrag
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  fastrag-postgres-data: null
+  fastrag-pgadmin-data: null
+networks:
+  fastrag: null

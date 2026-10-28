@@ -1,0 +1,52 @@
+include:
+- path: ../compose/docker-compose.yaml
+  env_file:
+  - ../sdk/.env
+  - ../sdk/app/.env
+  - ../dashboard/.env
+  - ../ui/registry/.env
+  - ../compose/.env
+services:
+  docs:
+    build:
+      context: .
+      dockerfile: docs/Dockerfile.docs
+      target: dev
+    container_name: fastrag-docs
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.docs.rule: Host(`${DOCS_HOST:-docs.localhost}`)
+      traefik.http.routers.docs.entrypoints: web
+      traefik.http.routers.docs.service: docs
+      traefik.http.services.docs.loadbalancer.server.port: '8000'
+    volumes:
+    - ./docs/source:/app/docs/source
+    networks:
+    - fastrag
+    profiles:
+    - docs
+  e2e-tests:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile.e2e
+    container_name: fastrag-e2e-tests
+    profiles:
+    - e2e
+    volumes:
+    - fastrag-model-cache:/root/.cache/huggingface
+    networks:
+    - fastrag
+    depends_on:
+      postgres:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+    env_file:
+    - .env
+    - app/.env.docker
+volumes:
+  fastrag-model-cache: null
+networks:
+  fastrag:
+    driver: bridge
+name: fastrag

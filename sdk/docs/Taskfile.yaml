@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+vars:
+  SPHINXBUILD: '{{.SPHINXBUILD | default "uv run --group docs sphinx-build"}}'
+  SPHINXOPTS: '{{.SPHINXOPTS | default ""}}'
+  O: '{{.O | default ""}}'
+  SOURCEDIR: '{{.SOURCEDIR | default "source"}}'
+  BUILDDIR: '{{.BUILDDIR | default "build"}}'
+
+tasks:
+  default:
+    cmds:
+      - task: help
+
+  help:
+    desc: Show available Sphinx build targets
+    cmds:
+      - '{{.SPHINXBUILD}} -M help "{{.SOURCEDIR}}" "{{.BUILDDIR}}" {{.SPHINXOPTS}} {{.O}} {{.CLI_ARGS}}'
+
+  "*":
+    desc: Run a Sphinx build target (html, clean, linkcheck, latexpdf, etc.)
+    vars:
+      TARGET: '{{index .MATCH 0}}'
+    cmds:
+      - '{{.SPHINXBUILD}} -M "{{.TARGET}}" "{{.SOURCEDIR}}" "{{.BUILDDIR}}" {{.SPHINXOPTS}} {{.O}} {{.CLI_ARGS}}'

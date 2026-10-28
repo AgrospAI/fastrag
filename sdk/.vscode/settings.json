@@ -1,0 +1,11 @@
+{
+  "ruff.importStrategy": "fromEnvironment",
+  "ruff.path": [".venv/bin/ruff"],
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "explicit"
+    }
+  }
+}

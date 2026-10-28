@@ -1,0 +1,4 @@
+body { font-family: sans-serif; margin: 2rem; }
+main { max-width: 50rem; }
+nav, aside, footer { background: #eee; padding: 1rem; }
+[hidden] { display: none; }

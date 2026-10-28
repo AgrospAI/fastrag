@@ -1,0 +1,2 @@
+This is a plain-text fixture file, served as text/plain, for exercising
+DefaultParser instead of HtmlParser.

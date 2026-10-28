@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta name="generator" content="Docusaurus v3.9.2"><title>Use cases</title></head>
+<body><main><h1>Use cases</h1><div id="cases">Initial use case</div>
+<button id="more"><a>Load more</a></button></main>
+<script>
+// SSR exposes the button before hydration attaches its click handler.
+setTimeout(() => {
+    const more = document.getElementById('more');
+    more.onclick = () => {
+        document.getElementById('cases').insertAdjacentHTML('beforeend',
+            '<article><h2>Plant protection integrated reports</h2><p>Full report description.</p></article>');
+        more.innerHTML = '<a>Collapse</a>';
+    };
+    document.documentElement.dataset.hasHydrated = 'true';
+}, 800);
+</script></body></html>

@@ -1,0 +1,8 @@
+docs/_build/
+docs/build/
+docs/source/reference/generated/
+__pycache__/
+examples/results/
+examples/.fastrag-session
+dist/
+.test-services.env

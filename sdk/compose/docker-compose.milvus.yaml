@@ -1,0 +1,104 @@
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.18
+    container_name: fastrag-milvus-etcd
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.etcd.rule: Host(`${ETCD_HOST:-etcd.localhost}`)
+      traefik.http.routers.etcd.entrypoints: web
+      traefik.http.routers.etcd.service: etcd
+      traefik.http.services.etcd.loadbalancer.server.port: '2379'
+    command:
+    - etcd
+    - --advertise-client-urls=http://0.0.0.0:2379
+    - --listen-client-urls=http://0.0.0.0:2379
+    - --data-dir=/etcd
+    volumes:
+    - fastrag-milvus-etcd-data:/etcd
+    networks:
+    - fastrag
+    restart: unless-stopped
+    env_file:
+    - ../.env
+  minio:
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    container_name: fastrag-milvus-minio
+    command: minio server /minio_data --console-address ":9001"
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.minio.rule: Host(`${MINIO_HOST:-minio.localhost}`)
+      traefik.http.routers.minio.entrypoints: web
+      traefik.http.routers.minio.service: minio
+      traefik.http.services.minio.loadbalancer.server.port: '9000'
+      traefik.http.routers.minio-console.rule: Host(`${MINIO_CONSOLE_HOST:-minio-console.localhost}`)
+      traefik.http.routers.minio-console.entrypoints: web
+      traefik.http.routers.minio-console.service: minio-console
+      traefik.http.services.minio-console.loadbalancer.server.port: '9001'
+    volumes:
+    - fastrag-milvus-minio-data:/minio_data
+    networks:
+    - fastrag
+    restart: unless-stopped
+    env_file:
+    - ../.env
+  milvus:
+    image: milvusdb/milvus:v2.6.2
+    container_name: fastrag-milvus
+    command:
+    - milvus
+    - run
+    - standalone
+    labels:
+      traefik.enable: 'true'
+      traefik.tcp.routers.milvus.rule: HostSNI(`*`)
+      traefik.tcp.routers.milvus.entrypoints: milvus
+      traefik.tcp.routers.milvus.service: milvus
+      traefik.tcp.services.milvus.loadbalancer.server.port: '19530'
+      traefik.http.routers.milvus-http.rule: Host(`${MILVUS_HTTP_HOST:-milvus-http.localhost}`)
+      traefik.http.routers.milvus-http.entrypoints: web
+      traefik.http.routers.milvus-http.service: milvus-http
+      traefik.http.services.milvus-http.loadbalancer.server.port: '9091'
+    volumes:
+    - fastrag-milvus-data:/var/lib/milvus
+    networks:
+    - fastrag
+    depends_on:
+    - etcd
+    - minio
+    restart: unless-stopped
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:9091/healthz
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+    env_file:
+    - ../.env
+  attu:
+    profiles:
+    - attu
+    image: zilliz/attu:v2.4.1
+    container_name: fastrag-attu
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.attu.rule: Host(`${ATTU_HOST:-attu.localhost}`)
+      traefik.http.routers.attu.entrypoints: web
+      traefik.http.routers.attu.service: attu
+      traefik.http.services.attu.loadbalancer.server.port: '3000'
+    networks:
+    - fastrag
+    depends_on:
+    - milvus
+    restart: unless-stopped
+    env_file:
+    - ../.env
+volumes:
+  fastrag-milvus-etcd-data: null
+  fastrag-milvus-minio-data: null
+  fastrag-milvus-data: null
+networks:
+  fastrag: null

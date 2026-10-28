@@ -1,0 +1,32 @@
+# syntax=docker.io/docker/dockerfile:1
+
+# Build from sdk/, not from tests/ — every path below is relative to that
+# context: the `e2e-tests` service in docker-compose.yaml builds with
+# `context: .`, `dockerfile: tests/Dockerfile.e2e` (see `task e2e`).
+#
+# --all-groups --all-extras, the same as `task setup`: the suite exercises
+# the docling/model2vec/milvus/chunkers/html/serving-gated code paths, so the
+# base install alone is not enough to even collect the full 55-test suite,
+# let alone pass it.
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+WORKDIR /app
+
+# Dependencies first, so editing a test or a docstring does not reinstall
+# the world on the next build.
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --locked --all-groups --all-extras --no-install-project
+
+COPY src ./src
+COPY tests ./tests
+RUN uv sync --locked --all-groups --all-extras
+
+# Deliberately does not fetch the model2vec weights here: that would bake a
+# ~30 MB download into every image build instead of the runtime
+# `fastrag-model-cache` volume (see docker-compose.yaml) that lets it survive
+# across `task e2e` invocations. First run downloads into
+# /root/.cache/huggingface (root, since this image sets no other user);
+# every run after reuses the mounted volume.
+CMD ["uv", "run", "pytest"]

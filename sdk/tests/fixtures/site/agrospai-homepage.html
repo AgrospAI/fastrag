@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><title>AgrospAI fixture</title></head><body>
+<nav>Navigation chrome</nav>
+<main><h1>AgrospAI</h1><h2>Use Cases</h2>
+<div id="cases"><article><h3>Initial use case</h3><p>Initial description.</p></article></div>
+<button id="more">Load more</button>
+<details><summary>Extra information</summary><p>Hidden detail content.</p></details>
+<div role="tabpanel" hidden><p>Hidden tab content.</p></div>
+</main>
+<script>
+let batch = 0;
+const more = document.getElementById('more');
+more.onclick = () => {
+    if (new URL(location.href).searchParams.has("stalled")) return;
+    more.disabled = true;
+    setTimeout(() => {
+        batch++;
+        const title = batch === 1 ? 'Intermediate use case' :
+            'Precision livestock farming data sharing, integration and exploitation';
+        document.getElementById('cases').insertAdjacentHTML('beforeend',
+            `<article><h3>${title}</h3><p>Batch ${batch} complete description.</p></article>`);
+        if (batch === 2) more.remove();
+        else more.disabled = false;
+    }, 150);
+};
+setTimeout(() => document.documentElement.dataset.hasHydrated = 'true', 100);
+</script>
+</body></html>

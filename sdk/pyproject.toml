@@ -1,0 +1,121 @@
+[project]
+name = "fastrag-ai"
+version = "0.2.0"
+description = "SDK for building RAG chatbots from dynamic sources"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "AgrospAI", email = "agrospai@udl.cat" },
+    { name = "Christian López García", email = "christian.lopez@udl.cat" },
+    { name = "Zihan Chen", email = "zihan.chen@udl.cat" },
+    { name = "Jordi García Ventura", email = "jordi.garciaventura@udl.cat" },
+]
+keywords = [
+    "rag",
+    "retrieval-augmented-generation",
+    "llm",
+    "embeddings",
+    "vector-database",
+    "chatbot",
+    "sdk",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "sqlalchemy[asyncio]>=2.0.45",
+    "asyncpg>=0.31.0",
+    "alembic>=1.19.1",
+    "httpx>=0.28.1",
+    "python-ulid>=3.0",
+]
+
+[project.optional-dependencies]
+normalization = [
+    "tiktoken>=0.13,<1",
+    "markdown-it-py>=4.2,<5",
+    "docutils>=0.21,<0.23",
+]
+logging = ["rich>=14.1"]
+html = ["beautifulsoup4>=4.15.0", "html-to-markdown>=3.10.6"]
+chunkers = ["langchain-experimental>=0.4", "langchain-text-splitters>=1.1.2"]
+openai = ["langchain-openai>=1.1.7"]
+milvus = ["pymilvus>=2.6.6"]
+model2vec = ["model2vec>=0.9.0"]
+datasets = ["datasets>=3.0", "pyarrow>=17.0", "pyyaml>=6.0"]
+docling = ["docling>=2", "docling-core[chunking]>=2"]
+serving = [
+    "fastapi>=0.120",
+    "pydantic>=2",
+    "uvicorn>=0.34",
+    "typer>=0.15",
+    "prometheus-client>=0.21",
+]
+geoip = ["geoip2>=4"]
+dynamic = ["playwright>=1.58"]
+video = ["yt-dlp>=2025.1.1", "yt-dlp-ejs"]
+trafilatura = ["trafilatura>=2.0"]
+pdf = ["pypdf>=5"]
+chroma = ["chromadb>=1.0"]
+language = ["lingua-language-detector>=2.2.0"]
+
+[project.urls]
+Homepage = "https://github.com/AgrospAI/fastrag/tree/main/sdk"
+Documentation = "https://fastrag.agrospai.udl.cat"
+Repository = "https://github.com/AgrospAI/fastrag"
+Issues = "https://github.com/AgrospAI/fastrag/issues"
+Changelog = "https://github.com/AgrospAI/fastrag/blob/main/sdk/CHANGELOG.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fastrag"]
+exclude = ["*.mmdb"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src/fastrag", "/README.md", "/CHANGELOG.md", "/LICENSE"]
+exclude = ["*.mmdb"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.7",
+    "ty>=0.0.21",
+    "python-dotenv>=1.0",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pre-commit>=4.7.0",
+]
+docs = [
+    "sphinx>=8.1",
+    "pydata-sphinx-theme>=0.16.1",
+    "myst-parser>=4.0",
+    "sphinx-copybutton>=0.5.2",
+    "sphinx-design>=0.6.1",
+    "sphinx-autobuild>=2024.10.3",
+    "sphinxcontrib-mermaid>=1.0",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "D"]
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+[tool.ruff.lint.per-file-ignores]
+"examples/*" = ["D"]
+"tests/*" = ["D"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

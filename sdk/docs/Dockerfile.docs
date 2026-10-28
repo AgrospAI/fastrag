@@ -1,0 +1,55 @@
+# syntax=docker.io/docker/dockerfile:1
+
+# Build from sdk/, not from docs/ — every path below is relative to that
+# context: `docker build -f docs/Dockerfile.docs .` (see `task docs-image`).
+#
+# The reference is generated from docstrings, which means autodoc imports
+# fastrag: this image needs the package and its runtime dependencies installed,
+# not just Sphinx. --all-extras for the same reason — without bs4 installed
+# autodoc documents the `BeautifulSoup = None` fallback instead of the real
+# class, so the extras-gated API is what `task setup` gives you locally.
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS deps
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+WORKDIR /app
+
+# Dependencies first, so editing a docstring does not reinstall Sphinx.
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --locked --group docs --all-extras --no-install-project
+
+COPY src ./src
+COPY docs ./docs
+# Several guide pages `{literalinclude}` a script under examples/ (e.g.
+# guide/benchmarking.md pulls in examples/16_benchmarking.py) — without this,
+# sphinx-build's `-W` below turns each missing-include into a build failure,
+# pre-existing and unrelated to the generated-stubs race this file's `dev`
+# target and docker-compose.yaml's `docs` service volumes were changed for.
+COPY examples ./examples
+RUN uv sync --locked --group docs --all-extras
+
+# Live reload against bind-mounted sources — see the `docs` service in
+# docker-compose.yaml. Watches src/ too, since that is where the docstrings
+# are. PYTHONDONTWRITEBYTECODE keeps `sphinx-build`'s repeated `import fastrag`
+# from writing src/**/__pycache__/*.pyc in the first place; --ignore is kept
+# alongside it as a second line of defence (see docker-compose.yaml's `docs`
+# service comment for why neither one alone was trusted without the other).
+FROM deps AS dev
+ENV PYTHONDONTWRITEBYTECODE=1
+EXPOSE 8000
+CMD ["uv", "run", "sphinx-autobuild", "docs/source", "docs/build/html", \
+     "--watch", "src", \
+     "--ignore", "*/reference/generated/*", \
+     "--ignore", "*/__pycache__/*", \
+     "--host", "0.0.0.0", "--port", "8000"]
+
+FROM deps AS build
+# -W, so a cross-reference left behind by a rename fails the image build rather
+# than shipping as plain text.
+RUN uv run sphinx-build -b html -W --keep-going docs/source docs/build/html
+
+FROM nginx:1.27-alpine AS serve
+COPY --from=build /app/docs/build/html /usr/share/nginx/html
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1

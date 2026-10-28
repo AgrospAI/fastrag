@@ -1,0 +1,45 @@
+/* The theme's script stamps data-theme on <html> in both directions — it
+   resolves "auto" to a concrete value — so a prefers-color-scheme block would
+   never be the thing that applies. `html:not([data-theme])` is the first paint,
+   before that script runs; the theme treats it as light and so do we, otherwise
+   every page opens on a flash of the stock blue. */
+
+html {
+  --pst-font-family-base: "Inter", var(--pst-font-family-base-system);
+  --pst-font-family-heading: "Inter", var(--pst-font-family-base-system);
+  --pst-font-family-monospace: "JetBrains Mono",
+    var(--pst-font-family-monospace-system);
+}
+
+html:not([data-theme]),
+html[data-theme="light"] {
+  --pst-color-primary: #1f6f4a;
+  --pst-color-link: #1f6f4a;
+  --pst-color-link-hover: #17553a;
+  /* Slightly softer than the theme's default surface. */
+  --pst-color-surface: #f4f6f5;
+}
+
+html[data-theme="dark"] {
+  --pst-color-primary: #6ee7a8;
+  --pst-color-link: #6ee7a8;
+  --pst-color-link-hover: #a7f3cb;
+  --pst-color-surface: #1b1e20;
+}
+
+div.highlight,
+pre {
+  border-radius: 8px;
+}
+
+/* Signatures carry generics and unions, so they run long; a step down in size
+   keeps more of one on a line. */
+dl.py > dt.sig {
+  font-size: 0.9rem;
+}
+
+/* Give each documented object room to breathe in the API reference. */
+dl.py.class,
+dl.py.function {
+  margin-bottom: 2rem;
+}
