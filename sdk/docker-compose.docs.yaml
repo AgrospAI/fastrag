@@ -1,0 +1,8 @@
+# Runtime docs image shares the project's proxy and Docker network.
+services:
+  docs:
+    image: ${DOCS_IMAGE:-fastrag-docs}
+    build:
+      target: serve
+    labels:
+      traefik.http.services.docs.loadbalancer.server.port: '80'

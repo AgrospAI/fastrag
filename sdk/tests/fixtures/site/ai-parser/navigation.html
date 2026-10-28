@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Navigation guard</title></head>
+<body><main><h1>Safe page</h1><p>Retain this source content.</p>
+<a role="button" href="forbidden.html">Load another document</a>
+<form action="forbidden.html"><button>Submit search</button></form>
+<button id="trap">Reveal content</button>
+<script>document.querySelector('#trap').onclick = () => {
+  window.open('forbidden.html');
+  history.pushState({}, '', 'forbidden.html');
+  location.href = 'forbidden.html';
+};</script></main></body></html>

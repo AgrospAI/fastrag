@@ -1,0 +1,11 @@
+.venv/
+.ruff_cache/
+__pycache__/
+*.pyc
+.python-version
+
+docs/build/
+docs/_build/
+docs/source/reference/generated/
+
+.env

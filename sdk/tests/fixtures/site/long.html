@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Long Page</title></head>
+<body>
+  <h1>Long Page</h1>
+  <p>
+    Fastrag is a small toolkit for building retrieval-augmented chatbots out
+    of dynamic sources. This fixture page exists purely to carry enough
+    prose that splitting it at a small chunk size produces more than one
+    chunk, which is the one thing a chunking test genuinely needs from its
+    input text.
+  </p>
+  <p>
+    A pipeline in this package is built from lazy steps: fetchers turn a
+    location into raw bytes, parsers turn those bytes into text, chunkers
+    split that text into smaller pieces, embedders attach a vector to each
+    piece, and a vector store persists the result. None of this work
+    happens until the graph is actually evaluated.
+  </p>
+  <p>
+    Caching is explicit and per step rather than a hidden global behind the
+    scenes. A step handed a cache backend consults it before doing any real
+    work, and writes back whatever it produced once it is done, so a second
+    run of the same pipeline against the same configuration can skip
+    everything it already has an answer for.
+  </p>
+  <p>
+    Every step emits events as it runs: one when it starts, one for every
+    item it produces, one when it finishes, and one if it fails outright.
+    A logger or any other consumer can subscribe to this stream without the
+    step itself knowing or caring who, if anyone, is listening.
+  </p>
+  <p>
+    None of this paragraph's content matters beyond its length: it is here
+    only to push the total size of this page well past what a chunk size of
+    a few dozen characters could hold in one piece, so a splitter run
+    against it is forced to produce several chunks rather than just one.
+  </p>
+</body>
+</html>

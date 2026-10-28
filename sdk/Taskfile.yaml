@@ -1,0 +1,170 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+vars:
+  UV: '{{.UV | default "uv"}}'
+  DOCS_SOURCE: docs/source
+  DOCS_OUTPUT: docs/build/html
+  DOCS_LINKCHECK_OUTPUT: docs/build/linkcheck
+  DOCS_GENERATED: docs/source/reference/generated
+  DOCS_PORT: '{{.DOCS_PORT | default "8001"}}'
+  DOCS_IMAGE: '{{.DOCS_IMAGE | default "fastrag-docs"}}'
+  LINT_PATHS: '{{.LINT_PATHS | default "src tests examples docs app scripts"}}'
+  TYPE_PATHS: '{{.TYPE_PATHS | default "src examples app scripts"}}'
+
+tasks:
+  default:
+    aliases: [help]
+    silent: true
+    cmds:
+      - task --list
+
+  setup:
+    aliases: [init]
+    desc: Install every dependency group and extra, and the git hooks
+    cmds:
+      - '{{.UV}} sync --all-groups --all-extras'
+      - task: hooks
+
+  hooks:
+    desc: Install the pre-commit hooks that format, lint, and type-check each commit
+    cmds:
+      # The config lives at the repository root, where pre-commit looks for it.
+      - '{{.UV}} run pre-commit install'
+
+  bump:
+    desc: Bump the version for release (patch by default; task bump -- minor|major|<version>)
+    env:
+      UV: '{{.UV}}'
+    cmds:
+      - '{{.UV}} run --no-project python scripts/bump_version.py {{.CLI_ARGS}}'
+
+  dev:
+    desc: Serve the application with hot reload
+    cmds:
+      - '{{.UV}} run --env-file app/.env uvicorn app.serve:build_app_sync --factory --reload --reload-dir app --reload-dir src --host 0.0.0.0 --port 8000 {{.CLI_ARGS}}'
+
+  format:
+    desc: Apply lint fixes and format
+    cmds:
+      - '{{.UV}} run ruff check --fix {{.LINT_PATHS}}'
+      - '{{.UV}} run ruff format {{.LINT_PATHS}}'
+
+  lint:
+    desc: Check lint rules and formatting
+    cmds:
+      - '{{.UV}} run ruff check {{.LINT_PATHS}}'
+      - '{{.UV}} run ruff format --check {{.LINT_PATHS}}'
+
+  typecheck:
+    desc: Check static types
+    cmds:
+      - '{{.UV}} run ty check {{.TYPE_PATHS}}'
+
+  test:
+    desc: Run pytest against isolated SDK services (requires Docker)
+    env:
+      FASTRAG_DATABASE_URL: postgresql://postgres@127.0.0.1:55433/fastrag_sdk_test
+      FASTRAG_MILVUS_URI: http://127.0.0.1:19531
+    cmds:
+      - '{{.UV}} run --group dev --all-extras python scripts/test_services.py start'
+      # Module invocation survives a moved checkout with stale launcher shebangs.
+      - '{{.UV}} run --group dev --all-extras python -m pytest {{.CLI_ARGS}}'
+
+  clean:
+    desc: Remove build outputs and caches
+    cmds:
+      - task: docs-clean
+      - find . -type d -name __pycache__ -not -path "./.venv/*" -exec rm -rf {} +
+      - rm -rf .ruff_cache
+
+  check:
+    desc: Run lint, type checks, and tests
+    cmds:
+      - task: lint
+      - task: typecheck
+      - task: test
+
+  docs:
+    desc: Build the HTML documentation into docs/build/html
+    cmds:
+      # Stale autosummary stubs cause recursion; stale doctrees cause false warnings.
+      - rm -rf {{.DOCS_GENERATED}} {{.DOCS_OUTPUT}}/.doctrees
+      - '{{.UV}} run --group docs sphinx-build -b html -W --keep-going {{.DOCS_SOURCE}} {{.DOCS_OUTPUT}} {{.CLI_ARGS}}'
+      - 'printf "\nBuilt {{.DOCS_OUTPUT}}/index.html\n"'
+
+  docs-linkcheck:
+    desc: Check every external link resolves
+    cmds:
+      - rm -rf {{.DOCS_GENERATED}} {{.DOCS_LINKCHECK_OUTPUT}}/.doctrees
+      - '{{.UV}} run --group docs sphinx-build -b linkcheck {{.DOCS_SOURCE}} {{.DOCS_LINKCHECK_OUTPUT}} {{.CLI_ARGS}}'
+
+  docs-serve:
+    desc: Preview the documentation with live reload on :8001
+    cmds:
+      - rm -rf {{.DOCS_GENERATED}}
+      # Avoid rebuild loops when package imports would write watched bytecode.
+      - >-
+        PYTHONDONTWRITEBYTECODE=1 {{.UV}} run --group docs sphinx-autobuild
+        --watch src --ignore '*/reference/generated/*' --ignore '*/__pycache__/*'
+        --port {{.DOCS_PORT}} --open-browser {{.DOCS_SOURCE}} {{.DOCS_OUTPUT}} {{.CLI_ARGS}}
+
+  docs-clean:
+    desc: Remove the built docs and generated API stubs
+    cmds:
+      - rm -rf docs/build docs/_build {{.DOCS_GENERATED}}
+
+  docs-check:
+    desc: Clean, build, and link-check the docs
+    cmds:
+      - task: docs-clean
+      - task: docs
+      - task: docs-linkcheck
+
+  docs-image:
+    desc: Build the documentation image
+    cmds:
+      - docker build -f docs/Dockerfile.docs -t {{.DOCS_IMAGE}} . {{.CLI_ARGS}}
+
+  docs-docker:
+    desc: Serve the documentation image at http://docs.localhost
+    cmds:
+      - task: docs-image
+      - task --dir .. traefik:up
+      - DOCS_IMAGE={{.DOCS_IMAGE}} docker compose -f docker-compose.yaml -f docker-compose.docs.yaml up --no-deps docs {{.CLI_ARGS}}
+
+  openapi:
+    desc: Regenerate the checked-in OpenAPI document (no server required)
+    cmds:
+      - '{{.UV}} run python scripts/generate_openapi.py {{.CLI_ARGS}}'
+
+  e2e:
+    desc: Run pytest inside Docker Compose
+    cmds:
+      - task --dir .. traefik:up
+      - docker compose --profile e2e run --build --rm e2e-tests {{.CLI_ARGS}}
+
+  serve:
+    desc: Serve the grounded-answer API on :8100 (index first with task index)
+    cmds:
+      - '{{.UV}} run python examples/14_serving.py {{.CLI_ARGS}}'
+
+  index:
+    desc: Index the example site into Milvus
+    cmds:
+      - '{{.UV}} run python examples/05_indexing.py {{.CLI_ARGS}}'
+
+  ask:
+    desc: Run the interactive terminal client against a local serving app
+    cmds:
+      - '{{.UV}} run python examples/15_asking.py {{.CLI_ARGS}}'
+
+  deps:
+    desc: Start shared Docker dependencies
+    cmds:
+      - task --dir .. deps:up -- {{.CLI_ARGS}}
+
+  dev:docker:
+    desc: Start the backend in Docker with hot reload
+    cmds:
+      - task --dir .. app:up -- {{.CLI_ARGS}}

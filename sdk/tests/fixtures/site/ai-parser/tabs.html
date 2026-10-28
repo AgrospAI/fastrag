@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Research tabs</title>
+<link rel="stylesheet" href="style.css"></head><body><main><h1>Research tabs</h1>
+<div id="panel"><p>First panel contains irrigation research.</p></div>
+<button role="tab" id="next">Show livestock research</button>
+<details><summary>Reveal methods</summary><p>Sampling methods validate sensor readings.</p></details>
+<script>
+document.querySelector('#next').onclick = () => {
+  document.querySelector('#panel').innerHTML = '<p>Second panel contains livestock research.</p>';
+  document.querySelector('#next').remove();
+};
+</script></main></body></html>

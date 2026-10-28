@@ -1,0 +1,43 @@
+services:
+  ollama:
+    image: ollama/ollama:0.32.9
+    container_name: fastrag-ollama
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.ollama.rule: Host(`${OLLAMA_HOSTNAME:-ollama.localhost}`)
+      traefik.http.routers.ollama.entrypoints: web
+      traefik.http.routers.ollama.service: ollama
+      traefik.http.services.ollama.loadbalancer.server.port: '11434'
+    volumes:
+    - fastrag-ollama-data:/root/.ollama
+    networks:
+    - fastrag
+    restart: unless-stopped
+    healthcheck:
+      test:
+      - CMD
+      - ollama
+      - list
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  ollama-pull:
+    image: ollama/ollama:0.32.9
+    container_name: fastrag-ollama-pull
+    entrypoint:
+    - /bin/sh
+    - -c
+    - ollama pull "$${FASTRAG_CHAT_MODEL}"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+    - fastrag
+    restart: 'no'
+    env_file:
+    - ../.env
+    - ../app/.env
+volumes:
+  fastrag-ollama-data: null
+networks:
+  fastrag: null
